@@ -1,6 +1,13 @@
 import streamlit as st
+from datetime import datetime
+from pawpal_system import Owner, Pet, Task, Scheduler
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
+
+if "owner" not in st.session_state:
+    st.session_state.owner = Owner(name="Default Owner")
+
+user_owner = st.session_state.owner
 
 st.title("🐾 PawPal+")
 
@@ -14,6 +21,26 @@ but **it does not implement the project logic**. Your job is to design the syste
 Use this app as your interactive demo once your backend classes/functions exist.
 """
 )
+
+st.header("Today's Smart Schedule")
+all_tasks = user_owner.get_all_tasks()
+
+conflicts = Scheduler.get_conflicts(all_tasks)
+for warning in conflicts:
+    st.warning(warning, icon="⚠️")
+daily_plan = Scheduler.get_daily_plan(user_owner)
+
+if not daily_plan:
+    st.info("No tasks scheduled for today. Time for a nap!")
+else:
+    for task in daily_plan:
+        with st.container(border=True):
+            col1, col2, col3 = st.columns([1, 3, 1])
+            col1.write(f"**{task.scheduled_time.strftime('%H:%M')}**")
+            col2.write(f"{task.description} (P{task.priority})")
+            if col3.button("Done", key=task.description + str(task.scheduled_time)):
+                task.mark_complete()
+                st.rerun()
 
 with st.expander("Scenario", expanded=True):
     st.markdown(
@@ -48,6 +75,7 @@ st.caption("Add a few tasks. In your final version, these should feed into your 
 
 if "tasks" not in st.session_state:
     st.session_state.tasks = []
+
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -86,3 +114,16 @@ Suggested approach:
 4. Connect your scheduler here and display results.
 """
     )
+
+with st.form("add_pet_form"):
+    pet_name = st.text_input("Pet Name")
+    pet_species = st.selectbox("Species", ["Dog", "Cat", "Bird", "Other"])
+    submit = st.form_submit_button("Add Pet")
+
+    if submit and pet_name:
+        new_pet = Pet(name=pet_name, species=pet_species)
+        
+        user_owner.pets.append(new_pet) 
+        
+        st.success(f"{pet_name} added to PawPal+!")
+        st.rerun() 
